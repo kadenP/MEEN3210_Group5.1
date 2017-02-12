@@ -14,7 +14,7 @@ void stopIfFault()
 }
 
 //Function used to control motors
-void motorControl()
+void motorControl(int motorSpeed_Fwd[], int motorSpeed_Rev[])
 {
   //Turns in circle accelerating/decelerating from 0 to full speed
   for(int i = 0; i <= sizeof(motorSpeed_Fwd); i++)
