@@ -35,7 +35,14 @@ void setup()
   digitalWrite(Bu0, HIGH);  //Initialize pull-up resistor on Right Button
 
   pinMode(Bu1, INPUT);      //Set Top Button as input
-  digitalWrite(Bu1, HIGH);  //Initialize pull-up resistor on Top Buttono
+  digitalWrite(Bu1, HIGH);  //Initialize pull-up resistor on Top Butto
+
+  pinMode(Bu2, INPUT);       //Set Bottom Button as input
+  digitalWrite(Bu2, HIGH);  //Initialize pull-up resistor on Bottom Button
+
+  pinMode(Bu3, INPUT);      //Set Left Button as input
+  digitalWrite(Bu3, HIGH);  //Initialize pull-up resistor on Left Button
+  
   Serial.begin(9600);
 
 }
@@ -51,14 +58,15 @@ void loop()
   motorInput(xRaw, yRaw);
   
   //Read and print button and pot states on serial monitor
+  Serial.print("Joystick Coordinates: ");
   Serial.print(xMap);                     //x-position of joystick
   Serial.print(", ");
   Serial.print(yMap);                     //y-position of joystick
-  Serial.print(", ");
+  Serial.print("   Motor Inputs (L, R): ");
   Serial.print(leftMotor);                //Left motor input
   Serial.print(", ");
   Serial.print(rightMotor);               //Right motor input
-  Serial.print(" Button Status: ");
+  Serial.print("   Button Status: ");
   Serial.print(digitalRead(Sel));         //Select Button
   Serial.print(digitalRead(Bu0));         //Right Button
   Serial.print(digitalRead(Bu1));         //Top Button
@@ -67,3 +75,13 @@ void loop()
   
   delay(10);
 }
+
+
+
+
+
+
+
+
+
+
