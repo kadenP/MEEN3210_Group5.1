@@ -44,6 +44,6 @@ void loop()
     lcd.print("Running...");
 
     //Run motor control function
-    motorControl();
+    motorControl(motorSpeed_Fwd, motorSpeed_Rev);
   }
 }
