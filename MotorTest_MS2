@@ -1,11 +1,11 @@
-//#include "DualVNH5019MotorShield.h"
-//DualVNH5019MotorShield md;//Use default pins : DualVNH5019MotorShield md(INA1,INB1,EN1DIAG1,CS1,INA2,INB2,EN1DIAG2,CS2);
+#include "DualVNH5019MotorShield.h"
+DualVNH5019MotorShield md;//Use default pins : DualVNH5019MotorShield md(INA1,INB1,EN1DIAG1,CS1,INA2,INB2,EN1DIAG2,CS2);
 //DualVNH5019MotorShield md(2,4,6,A0,7,8,12,A1);// Use default pins
 //DualVNH5019MotorShield md(42,44,46,A2,47,48,52,A3);//Use non-default pins
 
-#include "DualVNH5019MotorShieldMod.h"
+//#include "DualVNH5019MotorShieldMod.h"
 
-DualVNH5019MotorShieldMod md;//Use default pins : DualVNH5019MotorShield md(INA1,INB1,EN1DIAG1,CS1,INA2,INB2,EN1DIAG2,CS2);
+//DualVNH5019MotorShieldMod md;//Use default pins : DualVNH5019MotorShield md(INA1,INB1,EN1DIAG1,CS1,INA2,INB2,EN1DIAG2,CS2);
 //DualVNH5019MotorShieldMod md(2,4,6,A0,7,8,12,A1);// Use default pins
 //DualVNH5019MotorShieldMod md(42,44,46,A2,47,48,52,A3);//Use non-default pins
 //DualVNH5019MotorShieldMod md(42,44,46,A2,47,48,52,A3,11,12);//Use non-default pins including non-default PWM
