@@ -39,10 +39,10 @@ void loop()
   defaultTest();
 
   //Runs motors at full speed forward for 5 seconds and backward for 5 seconds
-  straightTest();
+  //straightTest();
 
   //Runs motors in opposite direction at full speed, truening in a circle
-  circleTest();
+  //circleTest();
 }
 
 void defaultTest()
