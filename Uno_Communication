@@ -11,12 +11,16 @@
  *  by Kaden Plewe
  */
 
+#include <SoftwareSerial.h>
+SoftwareSerial mySerial(2,3);   //Set up XBee on pins 2 and 3
+ 
+
 //Joystick Button (Digital) Pins
 const int Bu0 = 3;    //Right Button
 const int Bu1 = 4;    //Top Button
 const int Bu2 = 5;    //Bottom Button
 const int Bu3 = 6;    //Left Button
-const int Sel = 2;   //Select Button (on Joystick)
+const int Sel = 2;    //Select Button (on Joystick)
 
 //Joystick Pot (Analog) Pins
 const int xPot = 0;  //X-Axis Potentiometer
@@ -25,21 +29,27 @@ const int yPot = 1;  //Y-Axis Potentiometer
 //Global Variables
 int leftMotor;
 int rightMotor;
+char leftSign;
+char rightSign;
+int left1;
+int left2;
+int right1;
+int right2;
 
 // Pin 13 has an LED connected on most Arduino boards.
 // give it a name:
 int led = 13;
-int led_R = 12;
-int led_B = 11;
-int led_G = 10;
+int led_G = 12;
+int led_Y = 11;
+int led_R = 10;
 
 // the setup routine runs once when you press reset:
 void setup() {
   // initialize the digital pin as an output.
   pinMode(led, OUTPUT);
-  pinMode(led_R, OUTPUT);
-  pinMode(led_B, OUTPUT);
   pinMode(led_G, OUTPUT);
+  pinMode(led_Y, OUTPUT);
+  pinMode(led_R, OUTPUT);
   
   pinMode(Sel, INPUT);      //Set Joystick Select as input
   digitalWrite(Sel, HIGH);  //Initialize pull-up resistor on Select 
@@ -48,7 +58,7 @@ void setup() {
   digitalWrite(Bu0, HIGH);  //Initialize pull-up resistor on Right Button
 
   pinMode(Bu1, INPUT);      //Set Top Button as input
-  digitalWrite(Bu1, HIGH);  //Initialize pull-up resistor on Top Butto
+  digitalWrite(Bu1, HIGH);  //Initialize pull-up resistor on Top Button
 
   pinMode(Bu2, INPUT);       //Set Bottom Button as input
   digitalWrite(Bu2, HIGH);  //Initialize pull-up resistor on Bottom Button
@@ -56,7 +66,8 @@ void setup() {
   pinMode(Bu3, INPUT);      //Set Left Button as input
   digitalWrite(Bu3, HIGH);  //Initialize pull-up resistor on Left Button
   
-  Serial.begin(9600);
+  Serial.begin(9600);       //Initialize computer serial port
+  mySerial.begin(9600);     //Initialize XBee Serial Port
 }
 
 // the loop routine runs over and over again forever:
@@ -69,7 +80,9 @@ void loop() {
   int yMap = map(yRaw, 0, 1023, -10, 11);
 
   motorInput(xRaw, yRaw);
+  unoSend();
   
+/*  
   //Read and print button and pot states on serial monitor
   Serial.print("Joystick Coordinates: ");
   Serial.print(xMap);                     //x-position of joystick
@@ -85,23 +98,30 @@ void loop() {
   Serial.print(digitalRead(Bu1));         //Top Button
   Serial.print(digitalRead(Bu2));         //Bottom Button
   Serial.println(digitalRead(Bu3));       //Left Button
+*/  
+
   
+
+
   delay(10);
-  
+ /* 
   //turn off all leds
-  digitalWrite(led_R, LOW);    // turn the LED off by making the voltage LOW
-  digitalWrite(led_B, LOW);    // turn the LED off by making the voltage LOW
   digitalWrite(led_G, LOW);    // turn the LED off by making the voltage LOW
+  digitalWrite(led_Y, LOW);    // turn the LED off by making the voltage LOW
+  digitalWrite(led_R, LOW);    // turn the LED off by making the voltage LOW
   delay(500);
   
-  digitalWrite(led_R, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(1000);
-  digitalWrite(led_B, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(1000);
   digitalWrite(led_G, HIGH);   // turn the LED on (HIGH is the voltage level)
   delay(1000);
+  digitalWrite(led_Y, HIGH);   // turn the LED on (HIGH is the voltage level)
+  delay(1000);
+  digitalWrite(led_R, HIGH);   // turn the LED on (HIGH is the voltage level)
+  delay(1000);
+ */
 }
 
+//This function takes raw values from the joystick pots and converts them into
+//left/right mootor signals between -400 and 400 to be send wirelessly to the Mega
 int motorInput(int xRaw, int yRaw)
 {
   //Define the throttle value from y position
@@ -122,3 +142,46 @@ int motorInput(int xRaw, int yRaw)
     rightMotor = constrain(throttle - direc, -400, 400);
   }
  }
+
+//This function sends the data from each controller button/joystick to the Mega
+void unoSend()
+{
+  //Break up the motor signals to be between 0 and 254
+  if(leftMotor < 0)
+  {
+    leftSign = "-";    //negative signal (ASCII 45)
+  }
+  else
+  {
+    leftSign = "+";   //positive signal (ASCII 43)
+  }
+
+  if(rightMotor < 0)
+  {
+    rightSign = "-";    //negative signal (ASCII 45)
+  }
+  else
+  {
+    rightSign = "+";    //positive signal (ASCII 43)
+  }
+  
+  left1 = constrain(abs(leftMotor), 0, 254);
+  left2 = 400 - abs(leftMotor);
+  right1 = constrain(abs(rightMotor), 0, 254);
+  right2 = 400 - abs(rightMotor);
+
+  //Send signals
+  mySerial.write(255);                //signal to indicate starting bucket
+  mySerial.write(leftSign);           //sign on left motor signal
+  mySerial.write(left1);              //first part of left motor signal
+  mySerial.write(left2);              //second part of left motor signal
+  mySerial.write(rightSign);          //sign on right motor signal
+  mySerial.write(right1);             //first part of right motor signal
+  mySerial.write(right2);             //second part of right motor signal
+  mySerial.write(digitalRead(Sel));   //select button on joystick (0 or 1)
+  mySerial.write(digitalRead(Bu0));   //right button (0 or 1)
+  mySerial.write(digitalRead(Bu1));   //top button (0 or 1)
+  mySerial.write(digitalRead(Bu2));   //bottom button (0 or 1)
+  mySerial.write(digitalRead(Bu3));   //left button (0 or 1)
+
+}
