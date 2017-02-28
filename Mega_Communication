@@ -25,7 +25,7 @@ const int SB = 5;        //Digital pin 5 for boom servo
 const int SG = 6;        //Digital pin 6 for grab servo
 
 //Global Variables
-comandNum = 11;                 //number of buckets being used in serial communication
+int commandNum = 11;             //number of buckets being used in serial communication
 int leftMotor;                  //left motor speed
 int rightMotor;                 //right motor speed
 char leftSign;                  //left motor sign
@@ -35,10 +35,10 @@ char rightSign;                 //right motor sign
 int right1;                     //first part of right motor speed signal
 int right2;                     //second part of right motor speed signal
 int Sel;                        //select button state signal
-int = sgOpen;                   //Grab servo open command state
+int sgOpen;                   //Grab servo open command state
 int sbUp;                       //Boom servo raise command state
 int sbDown;                     //Boom servo lower command state
-int = sgClose;                  //Grab servo close command state
+int sgClose;                  //Grab servo close command state
 
 void setup()
 {
@@ -67,7 +67,7 @@ void loop()
   md.setM1Speed(leftMotor);
   stopIfFault();
   md.setM2Speed(rightMotor);
-  stopIffauld();
+  stopIfFault();
 }
 
 //This function will recieve signals from the uno in the order that 
@@ -79,7 +79,7 @@ void MegaRecieve()
     //Skip if the start signal isn't identified
     if(Serial1.read() != 255)
     {
-      continue
+      continue;
     }
 
     //Otherwise, collect all expected signals in sequence with small delays in between
@@ -109,7 +109,7 @@ void MegaRecieve()
 
     //compile left and right motor speed
     leftMotor = speedCompile(leftSign, left1, left2);
-    rightMotor = speedcompile(rightSign, right1, right2);
+    rightMotor = speedCompile(rightSign, right1, right2);
 
     //Avoid problematic button combinations
     if(sbUp == 0 && sbDown == 0)
@@ -130,6 +130,7 @@ void MegaRecieve()
 //to send to motor shield
 int speedCompile(char sign, int part1, int part2)
 {
+  int compSpeed;
   if(sign == 45)
   {
     compSpeed = -(part1 + part2);
