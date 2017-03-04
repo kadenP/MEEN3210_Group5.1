@@ -25,7 +25,7 @@ const int SB = 5;        //Digital pin 5 for boom servo
 const int SG = 6;        //Digital pin 6 for grab servo
 
 //Global Variables
-int commandNum = 11;             //number of buckets being used in serial communication
+int commandNum = 11;            //number of buckets being used in serial communication
 int leftMotor;                  //left motor speed
 int rightMotor;                 //right motor speed
 char leftSign;                  //left motor sign
@@ -39,13 +39,23 @@ int sgOpen;                   //Grab servo open command state
 int sbUp;                       //Boom servo raise command state
 int sbDown;                     //Boom servo lower command state
 int sgClose;                  //Grab servo close command state
+int startSignal;
 
 void setup()
 {
-  Serial.begin(9600);                             //Initialize computer serial port
-  Serial.println("Dual VNH5019 Motor Shield");
   md.init();
-  Serial1.begin(9600);                           //Initialize XBee Serial Port
+  
+  // Open serial communications with computer and wait for port to open:
+  Serial.begin(9600);
+
+  // Send a message to the computer through the USB
+  Serial.println("Hello Computer, I'm a Mega");
+
+  // Open serial communications with Xbee and wait for port to open:
+  Serial1.begin(9600);
+
+  // Send a message to the Uno through the Xbee
+  Serial1.print("Hello Uno, I'm a Mega!");
 }
 
 void loop()
@@ -60,70 +70,129 @@ void loop()
   //Runs motors in opposite direction at full speed, truening in a circle
   //circleTest();
 
-  //Recieve serial commands from uno
-  MegaRecieve();
+  //Wireless communication test function
+  //comTest();
 
-  //Set motor speeds
-  md.setM1Speed(leftMotor);
-  stopIfFault();
-  md.setM2Speed(rightMotor);
-  stopIfFault();
+  //Always send signals
+  //MegaSend();
+
+  //Recieve serial commands from uno if all serial commands are available and active
+  while(Serial1.available()>commandNum)
+  {
+    //Skip if the start signal isn't identified
+    startSignal = Serial1.read();
+    if(startSignal != 255)
+    {
+      continue;
+    }
+
+    //Send and recieve information
+    MegaRecieve();
+    
+  }
+  
 }
 
 //This function will recieve signals from the uno in the order that 
 //they were sent and compile them into the appropriate commands
 void MegaRecieve()
 {
-  while(Serial1.available()>commandNum) //Only collect if all command signals are ready
+  //Serial.print("Collecting Data");
+  //Otherwise, collect all expected signals in sequence with small delays in between
+  int delayTime = 5;                  //time for split delays
+  leftSign = Serial1.read();          //read left motor sign
+  delay(delayTime);
+  left1 = Serial1.read();             //read first part of left speed signal
+  delay(delayTime);
+  left2 = Serial1.read();             //read second part of left speed signal
+  delay(delayTime);
+  rightSign = Serial1.read();         //read right motor sign
+  delay(delayTime);
+  right1 = Serial1.read();            //read first part of right speed signal
+  delay(delayTime);
+  right2 = Serial1.read();            //read second part of right speed signal
+  delay(delayTime);
+  Sel = Serial1.read();               //read select button state signal
+  Serial.print(Sel);
+  Serial.print(" | ");
+  delay(delayTime);
+  sgOpen = Serial1.read();            //read grab servo open signal
+  Serial.print(sgOpen);
+  Serial.print(" | ");
+  delay(delayTime);
+  sbUp = Serial1.read();              //read boom servo up command signal
+  Serial.print(sbUp);\
+  Serial.print(" | ");
+  delay(delayTime);
+  sbDown = Serial1.read();            //read boom servo down command signal
+  Serial.print(sbDown);
+  Serial.print(" | ");
+  delay(delayTime);
+  sgClose = Serial1.read();           //read grab servo close signal
+  Serial.print(sgClose);
+  Serial.print(" | ");
+  delay(delayTime);
+
+  //compile left and right motor speed
+  leftMotor = speedCompile(leftSign, left1, left2);
+  Serial.print("left motor: ");
+  Serial.print(leftMotor);
+  rightMotor = speedCompile(rightSign, right1, right2);
+  Serial.print(" right motor: ");
+  Serial.print(rightMotor);
+  Serial.println();
+
+  //Set motor speeds
+  md.setM1Speed(leftMotor);
+  stopIfFault();
+  md.setM2Speed(rightMotor);
+  stopIfFault();
+  
+  //Avoid problematic button combinations
+  if(sbUp == 0 && sbDown == 0)
   {
-    //Skip if the start signal isn't identified
-    if(Serial1.read() != 255)
-    {
-      continue;
-    }
-
-    //Otherwise, collect all expected signals in sequence with small delays in between
-    int delayTime = 5;                  //time for split delays
-    leftSign = Serial1.read();          //read left motor sign
-    delay(delayTime);
-    left1 = Serial1.read();             //read first part of left speed signal
-    delay(delayTime);
-    left2 = Serial1.read();             //read second part of left speed signal
-    delay(delayTime);
-    rightSign = Serial1.read();         //read right motor sign
-    delay(delayTime);
-    right1 = Serial1.read();            //read first part of right speed signal
-    delay(delayTime);
-    right2 = Serial1.read();            //read second part of right speed signal
-    delay(delayTime);
-    Sel = Serial1.read();               //read select button state signal
-    delay(delayTime);
-    sgOpen = Serial1.read();            //read grab servo open signal
-    delay(delayTime);
-    sbUp = Serial1.read();              //read boom servo up command signal
-    delay(delayTime);
-    sbDown = Serial1.read();            //read boom servo down command signal
-    delay(delayTime);
-    sgClose = Serial1.read();           //read grab servo close signal
-    delay(delayTime);
-
-    //compile left and right motor speed
-    leftMotor = speedCompile(leftSign, left1, left2);
-    rightMotor = speedCompile(rightSign, right1, right2);
-
-    //Avoid problematic button combinations
-    if(sbUp == 0 && sbDown == 0)
-    {
-      sbUp = 1;
-      sbDown = 1;
-    }
-    if(sgOpen == 0 && sgClose == 0)
-    {
-      sgOpen = 1;
-      sgClose = 1;
-    }
- 
+    sbUp = 1;
+    sbDown = 1;
   }
+  if(sgOpen == 0 && sgClose == 0)
+  {
+    sgOpen = 1;
+    sgClose = 1;
+  }
+}
+
+//This function will send signals to the uno
+void MegaSend()
+{
+  //Send signals
+  Serial1.write(255);                //signal to indicate starting bucket
+  Serial1.write(1);                  //Indicate connection for yellow LED on uno
+ 
+}
+
+//Use this function to test communication between maga and uno. With the coresponding function
+//downloaded on the uno, the two should be able to send messages through the serial port
+void comTest()
+{
+  if (Serial1.available())
+  {
+     while (Serial1.available()) 
+    {
+      Serial.write(Serial1.read());
+        
+      delay(2);
+    }
+
+  Serial.print("\n");
+  }
+  
+   while (Serial.available()) 
+  {
+    Serial1.write(Serial.read());
+
+    delay(2);
+  }
+  
 }
 
 //This function takes the broken up speed signal and compiles it to a format
@@ -278,11 +347,3 @@ void stopIfFault()
     while(1);
   }
 }
-
-
-
-
-
-
-
-
