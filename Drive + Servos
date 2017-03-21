@@ -15,20 +15,38 @@
  * by Kaden Plewe
 */
 
-#include<Servo.h>
-#include "DualVNH5019MotorShield.h"
+#include <Servo.h>
+#include <DualVNH5019MotorShield.h>
+#include <Encoder.h>
+
+//Motor driver setup
 DualVNH5019MotorShield md;                              //Use default pins : DualVNH5019MotorShield md(INA1,INB1,EN1DIAG1,CS1,INA2,INB2,EN1DIAG2,CS2);
 //DualVNH5019MotorShield md(2,4,6,A0,7,8,12,A1);        //Use default pins
 //DualVNH5019MotorShield md(42,44,46,A2,47,48,52,A3);   //Use non-default pins
 
-//Constants
-const int SB = 5;        //Digital pin 5 for boom servo
-const int SG = 6;        //Digital pin 6 for grab servo
+//Encoder setup
+Encoder encR(22, 24);
+Encoder encL(28, 26);
+
+//Encoder Variables
+const long countsPerRev = 8400;          //Encoder counts per revelution of output shaft for 131:1 motor
+const float wheelCircum_m = 0.314159;    //Wheel circumference
+const float maxSpeed = 0.24;             //Max linear speed (m/s)
+
+//Feedback Variables
+float velGain = 0.000001;                                   //Proportional velocity control constant
+float desiredCntPerSecLeft, desiredCntPerSecRight;       //desired counts per second
+
+long newPosLeft, newPosRight;                            //Tracking variables for encoder counts
+long oldPosLeft = 0, oldPosRight = 0;     
+long cntPerSecLeft, cntPerSecRight;                      //Variables for speed of wheels
+long errorLeft, errorRight;                              //Velocity error signals
+unsigned long currentTime_us, oldTime_us;                //Timer variables
 
 //Global Variables
 int commandNum = 11;            //number of buckets being used in serial communication
-int leftMotor;                  //left motor speed
-int rightMotor;                 //right motor speed
+int leftMotor = 0;              //left motor speed
+int rightMotor = 0;             //right motor speed
 char leftSign;                  //left motor sign
 int left1;                      //first part of left motor speed signal
 int left2;                      //second part of left motor speed signal
@@ -47,12 +65,12 @@ int startSignal;
 // *** Declare & Initialize Pins ***
 
 const int hallPin = A1;
-const int LEDhall = 1;
-const int LEDred = 12;
-const int LEDblue = 13;
-const int servoBoomPin = 5;
-const int servoClampPin = 6;
-const int easyPin = 11;
+const int LEDhall = 42;
+const int LEDred = 44;
+const int LEDblue = 46;
+const int servoBoomPin = 52;
+const int servoClampPin = 50;
+const int easyPin = 48;
 
 
 
@@ -65,21 +83,18 @@ Servo clampServo;
 // *** Declare & Initialize Program Variables ***
 
 int desiredPosition = 0;
-int boomAngle = 90;
+int boomAngle = 0;
 int clampAngle = 0;
 
-int servoSmallInc = 1;
+int servoSmallInc = 5;
 int servoLargeInc = 5;
 
 int hallSensorReading = 0;
 
-
-
-
-
 void setup()
 {
   md.init();
+  oldTime_us = millis();
   
   // Open serial communications with computer and wait for port to open:
   Serial.begin(9600);
@@ -93,14 +108,30 @@ void setup()
   // Send a message to the Uno through the Xbee
   Serial1.print("Hello Uno, I'm a Mega!");
 
-pinMode(hallPin,INPUT);
-pinMode(LEDhall,OUTPUT);
-pinMode(LEDhall,OUTPUT);
-pinMode(LEDred,OUTPUT);
-pinMode(LEDblue,OUTPUT);
+  pinMode(hallPin,INPUT);
+  pinMode(LEDhall,OUTPUT);
+  pinMode(LEDhall,OUTPUT);
+  pinMode(LEDred,OUTPUT);
+  pinMode(LEDblue,OUTPUT);
 
-boomServo.attach(servoBoomPin);
-clampServo.attach(servoClampPin);
+  //Configure servos
+  boomServo.attach(servoBoomPin);
+  boomServo.write(boomAngle);
+  clampServo.attach(servoClampPin);
+  clampServo.write(clampAngle);
+
+  //Initialize signals
+  leftSign = 0;          //left motor sign
+  left1 = 0;             //first part of left speed signal
+  left2 = 0;             //second part of left speed signal
+  rightSign = 0;         //right motor sign
+  right1 = 0;            //first part of right speed signal
+  right2 = 0;            //second part of right speed signal
+  Sel = 1;               //select button state signal
+  sgOpen = 1;            //grab servo open signal
+  sbUp = 1;              //boom servo up command signal
+  sbDown = 1;            //boom servo down command signal
+  sgClose = 1;           //grab servo close signal
 }
 
 void loop()
@@ -131,12 +162,17 @@ void loop()
       continue;
     }
 
-    //Send and recieve information
+    //Recieve information
     MegaRecieve();
+    
+    //Motor Control
+    driveControl(); 
 
+    //clamp control (open/close)      
     clampControl();
-    boomControl();
-    ///// PUT SERVO FUNCTIONS HERE
+
+    //arm control (raise/lower)       
+    boomControl();        
   }
   
 }
@@ -145,68 +181,63 @@ void loop()
 //they were sent and compile them into the appropriate commands
 void MegaRecieve()
 {
-  //Serial.print("Collecting Data");
   //Otherwise, collect all expected signals in sequence with small delays in between
-  int delayTime = 5;                  //time for split delays
-  leftSign = Serial1.read();          //read left motor sign
+  int take;
+  int delayTime = 0.5;                         //time for split delays
+  take = Serial1.read();
+  if(take != 255){leftSign = take;}          //read left motor sign
   delay(delayTime);
-  left1 = Serial1.read();             //read first part of left speed signal
+  take = Serial1.read();
+  if(take != 255){left1 = take;}             //read first part of left speed signal
   delay(delayTime);
-  left2 = Serial1.read();             //read second part of left speed signal
+  take = Serial1.read();
+  if(take != 255){left2 = take;}             //read second part of left speed signal
   delay(delayTime);
-  rightSign = Serial1.read();         //read right motor sign
+  take = Serial1.read();
+  if(take != 255){rightSign = take;}         //read right motor sign
   delay(delayTime);
-  right1 = Serial1.read();            //read first part of right speed signal
+  take = Serial1.read();
+  if(take != 255){right1 = take;}            //read first part of right speed signal
   delay(delayTime);
-  right2 = Serial1.read();            //read second part of right speed signal
+  take = Serial1.read();
+  if(take != 255){right2 = take;}            //read second part of right speed signal
   delay(delayTime);
-  Sel = Serial1.read();               //read select button state signal
-  Serial.print(Sel);
-  Serial.print(" | ");
+  take = Serial1.read();
+  if(take != 255){Sel = take;}               //read select button state signal
   delay(delayTime);
-  sgOpen = Serial1.read();            //read grab servo open signal
-  Serial.print(sgOpen);
-  Serial.print(" | ");
+  take = Serial1.read();
+  if(take != 255){sgOpen = take;}            //read grab servo open signal
   delay(delayTime);
-  sbUp = Serial1.read();              //read boom servo up command signal
-  Serial.print(sbUp);\
-  Serial.print(" | ");
+  take = Serial1.read();
+  if(take != 255){sbUp = take;}              //read boom servo up command signal
   delay(delayTime);
-  sbDown = Serial1.read();            //read boom servo down command signal
-  Serial.print(sbDown);
-  Serial.print(" | ");
+  take = Serial1.read();
+  if(take != 255){sbDown = take;}            //read boom servo down command signal
   delay(delayTime);
-  sgClose = Serial1.read();           //read grab servo close signal
-  Serial.print(sgClose);
-  Serial.print(" | ");
+  take = Serial1.read();
+  if(take != 255){sgClose = take;}           //read grab servo close signal
   delay(delayTime);
 
   //compile left and right motor speed
   leftMotor = speedCompile(leftSign, left1, left2);
-  Serial.print("left motor: ");
-  Serial.print(leftMotor);
   rightMotor = speedCompile(rightSign, right1, right2);
-  Serial.print(" right motor: ");
-  Serial.print(rightMotor);
-  Serial.println();
 
-  //Set motor speeds
-  md.setM1Speed(leftMotor);
-  stopIfFault();
-  md.setM2Speed(rightMotor);
-  stopIfFault();
-  
-  //Avoid problematic button combinations
-  if(sbUp == 0 && sbDown == 0)
-  {
-    sbUp = 1;
-    sbDown = 1;
-  }
-  if(sgOpen == 0 && sgClose == 0)
-  {
-    sgOpen = 1;
-    sgClose = 1;
-  }
+//  //Print Signals
+//  Serial.print(Sel);
+//  Serial.print(" | ");
+//  Serial.print(sgOpen);
+//  Serial.print(" | ");
+//  Serial.print(sbUp);
+//  Serial.print(" | ");
+//  Serial.print(sbDown);
+//  Serial.print(" | ");
+//  Serial.print(sgClose);
+//  Serial.print(" | ");
+//  Serial.print("left motor: ");
+//  Serial.print(leftMotor);
+//  Serial.print(" right motor: ");
+//  Serial.print(rightMotor);
+//  Serial.println(); 
 }
 
 //This function will send signals to the uno
@@ -260,6 +291,7 @@ int speedCompile(char sign, int part1, int part2)
   return compSpeed;
 }
 
+//This function can be used to test the motors without the remote
 void defaultTest()
 {
   for (int i = 0; i <= 400; i++)
@@ -335,6 +367,7 @@ void defaultTest()
   }
 }
 
+//This function can be used to test the motors without the remote
 void straightTest()
 {
     //Run forward at full speed
@@ -358,7 +391,7 @@ void straightTest()
     delay(5000);
 }
 
-
+//This function can be used to test the motors without the remote
 void circleTest()
 {
     //Spin Clockwise for 5 Seconds
@@ -382,6 +415,7 @@ void circleTest()
     delay(5000);
 }
 
+//This function will stop operation and indicate a failed motor
 void stopIfFault()
 {
   if (md.getM1Fault())
@@ -396,33 +430,103 @@ void stopIfFault()
   }
 }
 
+//This function controls the motors
+void driveControl()
+{
+  //Identify the encoder positions and current time
+  newPosLeft = encL.read();
+  newPosRight = encR.read();
+  currentTime_us = micros();
+//  Serial.print(newPosLeft);
+//  Serial.print(" || ");
+//  Serial.print(oldPosLeft);
+//  Serial.print(" || ");
+//  Serial.print(newPosRight);
+//  Serial.print(" || ");
+//  Serial.print(oldPosRight);
+//  Serial.print(" || ");
+//  Serial.println(currentTime_us);
+  
+  
+  //Calculate the desired counts per second
+  desiredCntPerSecLeft  = -long(map(leftMotor, -400, -maxSpeed, 400, maxSpeed) / wheelCircum_m * float(countsPerRev));
+  desiredCntPerSecRight  = -long(map(rightMotor,-400, -maxSpeed, 400, maxSpeed) / wheelCircum_m * float(countsPerRev));
+//  Serial.print(desiredCntPerSecLeft);
+//  Serial.print(" || ");
+//  Serial.println(desiredCntPerSecRight);
+
+  //Calculate the current counts per second
+  cntPerSecLeft  = (newPosLeft  - oldPosLeft)  / (1e6*(currentTime_us - oldTime_us));    
+  cntPerSecRight = (newPosRight - oldPosRight) / (1e6*(currentTime_us - oldTime_us));
+  Serial.print(cntPerSecLeft);
+  Serial.print(" || ");
+  Serial.println(cntPerSecRight);
+
+  // Determine velocity error in counts per second
+  errorLeft  = desiredCntPerSecLeft - cntPerSecLeft;
+  errorRight = desiredCntPerSecRight - cntPerSecRight;
+//  Serial.print(errorLeft);
+//  Serial.print(" || ");
+//  Serial.println(errorRight);
+
+  //Adjust motor speeds based on proportional control
+  leftMotor  += int(float(errorLeft)  * velGain);  
+  rightMotor += int(float(errorRight) * velGain);
+  
+  //Set motor speeds
+  leftMotor  = constrain(leftMotor, -400,400);
+  rightMotor = constrain(rightMotor,-400,400);
+  if(leftMotor < 5 && leftMotor > -5){md.setM1Brake(400);}
+  else
+  {
+    md.setM1Speed(leftMotor);
+    stopIfFault();
+  }
+  if(rightMotor < 5 && rightMotor > -5){md.setM2Brake(400);}
+  else
+  {
+    md.setM2Speed(rightMotor);
+    stopIfFault();
+  }
+
+  //Set variables for next cycle
+  oldTime_us  = currentTime_us;
+  oldPosLeft  = newPosLeft;
+  oldPosRight = newPosRight;
+}
+
+//This function controls the manipulator arm
 void boomControl() 
 {
-  if (sbUp == 0){
-  boomAngle = boomAngle + servoLargeInc;
-  boomServo.write(boomAngle);
-    Serial.println("Raising");
+  if (sbUp == 0 && boomAngle > 0)
+  {
+    boomAngle = boomAngle - servoLargeInc;
+    boomServo.write(boomAngle);
+    //Serial.println("Raising");
 
   }
-  if (sbDown == 0){
-  boomAngle = boomAngle - servoLargeInc;
-  boomServo.write(boomAngle);
-    Serial.println("Lowering");
-
+  if (sbDown == 0 && boomAngle < 105)
+  {
+    boomAngle = boomAngle + servoLargeInc;
+    boomServo.write(boomAngle);
+    //Serial.println("Lowering");
   } 
 }
 
+//This function controls the clamp
 void clampControl()
 {
-  if (sgOpen == 0){
-  clampAngle = clampAngle + servoLargeInc;
-  clampServo.write(clampAngle);
-  Serial.println("Opening");
+  if (sgOpen == 0 && clampAngle < 180)
+  {
+    clampAngle = clampAngle + servoLargeInc;
+    clampServo.write(clampAngle);
+    //Serial.println("Opening");
   }
-  if (sgClose == 0){
-  clampAngle = clampAngle + servoLargeInc;
-  clampServo.write(clampAngle);
-    Serial.println("Closing");
+  if (sgClose == 0 && clampAngle > 0)
+  {
+    clampAngle = clampAngle - servoLargeInc;
+    clampServo.write(clampAngle);
+    //Serial.println("Closing");
 
   }
 }
