@@ -54,17 +54,22 @@ char rightSign;                 //right motor sign
 int right1;                     //first part of right motor speed signal
 int right2;                     //second part of right motor speed signal
 int Sel;                        //select button state signal
-int sgOpen;                   //Grab servo open command state
+int sgOpen;                     //Grab servo open command state
 int sbUp;                       //Boom servo raise command state
 int sbDown;                     //Boom servo lower command state
-int sgClose;                  //Grab servo close command state
+int sgClose;                    //Grab servo close command state
 int startSignal;
+int hallState = 1;              //state of hall sensor
+int easyState = 1;              //state of easy button
+int startTime;
+int delayTime;
 
 
 
 // *** Declare & Initialize Pins ***
 
-const int hallPin = A1;
+const int hallPin1 = 30;
+const int hallPin2 = 32;
 const int LEDhall = 42;
 const int LEDred = 44;
 const int LEDblue = 46;
@@ -86,10 +91,8 @@ int desiredPosition = 0;
 int boomAngle = 0;
 int clampAngle = 0;
 
-int servoSmallInc = 5;
+int servoSmallInc = 1;
 int servoLargeInc = 5;
-
-int hallSensorReading = 0;
 
 void setup()
 {
@@ -108,11 +111,15 @@ void setup()
   // Send a message to the Uno through the Xbee
   Serial1.print("Hello Uno, I'm a Mega!");
 
-  pinMode(hallPin,INPUT);
+  //Set digital states
+  pinMode(hallPin1,INPUT);
+  pinMode(hallPin2,INPUT);
   pinMode(LEDhall,OUTPUT);
   pinMode(LEDhall,OUTPUT);
   pinMode(LEDred,OUTPUT);
   pinMode(LEDblue,OUTPUT);
+  pinMode(easyPin,INPUT);
+  digitalWrite(easyPin,HIGH);
 
   //Configure servos
   boomServo.attach(servoBoomPin);
@@ -149,9 +156,6 @@ void loop()
   //Wireless communication test function
   //comTest();
 
-  //Always send signals
-  //MegaSend();
-
   //Recieve serial commands from uno if all serial commands are available and active
   while(Serial1.available()>commandNum)
   {
@@ -163,7 +167,7 @@ void loop()
     }
 
     //Recieve information
-    MegaRecieve();
+    MegaCom();
     
     //Motor Control
     driveControl(); 
@@ -172,14 +176,23 @@ void loop()
     clampControl();
 
     //arm control (raise/lower)       
-    boomControl();        
+    boomControl();
+
+    //Check easy button in loop
+    readEasy();
+
+    //Print to serial monitor
+    serialPrint();
   }
+
+  //Check easy button out of loop
+  readEasy();
   
 }
 
 //This function will recieve signals from the uno in the order that 
 //they were sent and compile them into the appropriate commands
-void MegaRecieve()
+void MegaCom()
 {
   //Otherwise, collect all expected signals in sequence with small delays in between
   int take;
@@ -222,30 +235,19 @@ void MegaRecieve()
   leftMotor = speedCompile(leftSign, left1, left2);
   rightMotor = speedCompile(rightSign, right1, right2);
 
-//  //Print Signals
-//  Serial.print(Sel);
-//  Serial.print(" | ");
-//  Serial.print(sgOpen);
-//  Serial.print(" | ");
-//  Serial.print(sbUp);
-//  Serial.print(" | ");
-//  Serial.print(sbDown);
-//  Serial.print(" | ");
-//  Serial.print(sgClose);
-//  Serial.print(" | ");
-//  Serial.print("left motor: ");
-//  Serial.print(leftMotor);
-//  Serial.print(" right motor: ");
-//  Serial.print(rightMotor);
-//  Serial.println(); 
+  //Read hall effect sensor
+  readHall();
+
+  //Send signals
+  MegaSend();
+
 }
 
 //This function will send signals to the uno
 void MegaSend()
 {
-  //Send signals
-  Serial1.write(255);                //signal to indicate starting bucket
-  Serial1.write(1);                  //Indicate connection for yellow LED on uno
+  //Send signal
+  Serial1.write(hallState);          //State of hall effect sensor
  
 }
 
@@ -458,9 +460,9 @@ void driveControl()
   //Calculate the current counts per second
   cntPerSecLeft  = (newPosLeft  - oldPosLeft)  / (1e6*(currentTime_us - oldTime_us));    
   cntPerSecRight = (newPosRight - oldPosRight) / (1e6*(currentTime_us - oldTime_us));
-  Serial.print(cntPerSecLeft);
-  Serial.print(" || ");
-  Serial.println(cntPerSecRight);
+//  Serial.print(cntPerSecLeft);
+//  Serial.print(" || ");
+//  Serial.println(cntPerSecRight);
 
   // Determine velocity error in counts per second
   errorLeft  = desiredCntPerSecLeft - cntPerSecLeft;
@@ -500,14 +502,14 @@ void boomControl()
 {
   if (sbUp == 0 && boomAngle > 0)
   {
-    boomAngle = boomAngle - servoLargeInc;
+    boomAngle = boomAngle - servoSmallInc;
     boomServo.write(boomAngle);
     //Serial.println("Raising");
 
   }
   if (sbDown == 0 && boomAngle < 105)
   {
-    boomAngle = boomAngle + servoLargeInc;
+    boomAngle = boomAngle + servoSmallInc;
     boomServo.write(boomAngle);
     //Serial.println("Lowering");
   } 
@@ -531,7 +533,61 @@ void clampControl()
   }
 }
 
+//This function reads the hall effect sensor
+void readHall()
+{
+  if(digitalRead(hallPin1) == 0 || digitalRead(hallPin2) == 0){hallState = 0;}
+  else{hallState = 1;}
+}
 
+void readEasy()
+{
+  easyState = digitalRead(easyPin);
+  if(easyState == 0)
+  {
+    Serial.print("**********************************************************************");
+    startTime = millis();
+    delayTime = millis() - startTime;
+    delay(2000);
+    while(delayTime < 30000)
+    {
+      easyState = digitalRead(easyPin);
+      Serial.print(easyState);
+      Serial.print(" || Delayed: ");
+      Serial.println(delayTime);
+
+      //Update delay time
+      delayTime = millis() - startTime;
+
+      //End timer if easy button is pressed again 
+      if(easyState == 0){easyState = 1; delay(1000); delayTime = 30000;}
+      //if(easyState == 0){easyState = 1; delay(1000); break;}
+    }
+  }
+}
+
+void serialPrint()
+{
+  //Print Signals
+  Serial.print(hallState);
+  Serial.print(" | ");    
+//  Serial.print(Sel);
+//  Serial.print(" | ");
+//  Serial.print(sgOpen);
+//  Serial.print(" | ");
+//  Serial.print(sbUp);
+//  Serial.print(" | ");
+//  Serial.print(sbDown);
+//  Serial.print(" | ");
+//  Serial.print(sgClose);
+//  Serial.print(" | ");
+//  Serial.print("left motor: ");
+//  Serial.print(leftMotor);
+//  Serial.print(" right motor: ");
+//  Serial.print(rightMotor);
+  Serial.print(easyState);
+  Serial.println(); 
+}
 
 
 
