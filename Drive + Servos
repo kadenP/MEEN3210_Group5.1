@@ -546,6 +546,9 @@ void readEasy()
   if(easyState == 0)
   {
     Serial.print("**********************************************************************");
+    //Stop Motors
+    md.setM1Speed(0);
+    md.setM2Speed(0);
     startTime = millis();
     delayTime = millis() - startTime;
     delay(2000);
