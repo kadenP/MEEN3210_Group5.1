@@ -34,13 +34,17 @@ const float wheelCircum_m = 0.314159;    //Wheel circumference
 const float maxSpeed = 0.24;             //Max linear speed (m/s)
 
 //Feedback Variables
-float velGain = 0.000001;                                   //Proportional velocity control constant
+float Kp = 0.00001;                                        //Proportional velocity control constant
+float Kd = 0.000075;
+float Ki = 0.000000005;
 float desiredCntPerSecLeft, desiredCntPerSecRight;       //desired counts per second
 
 long newPosLeft, newPosRight;                            //Tracking variables for encoder counts
 long oldPosLeft = 0, oldPosRight = 0;     
 long cntPerSecLeft, cntPerSecRight;                      //Variables for speed of wheels
-long errorLeft, errorRight;                              //Velocity error signals
+long errorLeft = 0, errorRight = 0;                      //Velocity error signals
+long prevErrorLeft = 0, prevErrorRight = 0;              //Previous error signals
+long errSumLeft = 0; long errSumRight = 0;               //Error summ for integral control
 unsigned long currentTime_us, oldTime_us;                //Timer variables
 
 //Global Variables
@@ -465,6 +469,8 @@ void driveControl()
 //  Serial.println(cntPerSecRight);
 
   // Determine velocity error in counts per second
+  prevErrorLeft = errorLeft;
+  prevErrorRight = errorRight;
   errorLeft  = desiredCntPerSecLeft - cntPerSecLeft;
   errorRight = desiredCntPerSecRight - cntPerSecRight;
 //  Serial.print(errorLeft);
@@ -472,8 +478,18 @@ void driveControl()
 //  Serial.println(errorRight);
 
   //Adjust motor speeds based on proportional control
-  leftMotor  += int(float(errorLeft)  * velGain);  
-  rightMotor += int(float(errorRight) * velGain);
+  leftMotor  += int(float(errorLeft)  * Kp);  
+  rightMotor += int(float(errorRight) * Kp);
+
+  //Adjust motor speeds based on derivative control
+  leftMotor  += int(float((errorLeft - prevErrorLeft)/(currentTime_us - oldTime_us))  * Kd);  
+  rightMotor += int(float((errorLeft - prevErrorLeft)/(currentTime_us - oldTime_us)) * Kd);
+
+  //Adjust motor speeds based on derivative control
+  errSumLeft += errorLeft;
+  errSumRight += errorRight;
+  leftMotor  += int(float(errSumLeft*(currentTime_us - oldTime_us))  * Ki);  
+  rightMotor += int(float(errSumRight*(currentTime_us - oldTime_us)) * Ki);
   
   //Set motor speeds
   leftMotor  = constrain(leftMotor, -400,400);
@@ -590,6 +606,7 @@ void serialPrint()
 //  Serial.print(rightMotor);
   Serial.print(easyState);
   Serial.println(); 
+}
 }
 
 
