@@ -77,9 +77,12 @@ const int hallPin2 = 32;
 const int LEDhall = 42;
 const int LEDred = 44;
 const int LEDblue = 46;
+int LEDteam = LEDblue;
+const int LEDgreen = 45;
 const int servoBoomPin = 52;
 const int servoClampPin = 50;
 const int easyPin = 48;
+int currentLEDState = 1;
 
 
 
@@ -120,10 +123,12 @@ void setup()
   pinMode(hallPin2,INPUT);
   pinMode(LEDhall,OUTPUT);
   pinMode(LEDhall,OUTPUT);
-  pinMode(LEDred,OUTPUT);
-  pinMode(LEDblue,OUTPUT);
+  pinMode(LEDteam,OUTPUT);
+  pinMode(LEDgreen,OUTPUT);
   pinMode(easyPin,INPUT);
   digitalWrite(easyPin,HIGH);
+  digitalWrite(LEDteam, HIGH);
+  digitalWrite(LEDgreen, HIGH);
 
   //Configure servos
   boomServo.attach(servoBoomPin);
@@ -244,6 +249,9 @@ void MegaCom()
 
   //Send signals
   MegaSend();
+
+  //Indicate Team
+  changeTeam();
 
 }
 
@@ -570,6 +578,26 @@ void readEasy()
     delay(2000);
     while(delayTime < 30000)
     {
+
+      //Blink LEDs
+      if(delayTime%500 == 0)
+      {
+        if(currentLEDState == 0)
+        {
+          //Turn on
+          digitalWrite(LEDteam, HIGH);
+          digitalWrite(LEDgreen, HIGH);
+          currentLEDState = 1;
+        }
+        else
+        {
+          //Turn off
+          digitalWrite(LEDteam, LOW);
+          digitalWrite(LEDgreen, LOW);
+          currentLEDState = 0;
+        }
+      }
+      
       easyState = digitalRead(easyPin);
       Serial.print(easyState);
       Serial.print(" || Delayed: ");
@@ -582,6 +610,23 @@ void readEasy()
       if(easyState == 0){easyState = 1; delay(1000); delayTime = 30000;}
       //if(easyState == 0){easyState = 1; delay(1000); break;}
     }
+  }
+  if(currentLEDState == 0)
+  {
+    //Turn on
+    digitalWrite(LEDteam, HIGH);
+    digitalWrite(LEDgreen, HIGH);
+    currentLEDState = 1;
+  }
+}
+
+void changeTeam()
+{
+  if(Sel == 0)
+  {
+    if(LEDteam == LEDblue){LEDteam = LEDred;}
+    else{LEDteam = LEDblue;}
+    digitalWrite(LEDteam, HIGH);
   }
 }
 
@@ -607,7 +652,3 @@ void serialPrint()
   Serial.print(easyState);
   Serial.println(); 
 }
-}
-
-
-
