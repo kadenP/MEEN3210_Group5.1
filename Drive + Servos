@@ -192,6 +192,9 @@ void loop()
 
     //Print to serial monitor
     serialPrint();
+    
+    //Indicate Team
+    changeTeam();
   }
 
   //Check easy button out of loop
@@ -249,10 +252,6 @@ void MegaCom()
 
   //Send signals
   MegaSend();
-
-  //Indicate Team
-  changeTeam();
-
 }
 
 //This function will send signals to the uno
@@ -580,7 +579,7 @@ void readEasy()
     {
 
       //Blink LEDs
-      if(delayTime%500 == 0)
+      if(delayTime%5 == 0)
       {
         if(currentLEDState == 0)
         {
