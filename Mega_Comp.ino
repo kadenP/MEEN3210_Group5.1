@@ -34,8 +34,8 @@ const float wheelCircum_m = 0.314159;    //Wheel circumference
 const float maxSpeed = 0.24;             //Max linear speed (m/s)
 
 //Feedback Variables
-float Kp = 0.00001;                                        //Proportional velocity control constant
-float Kd = 0.000075;
+float Kp = 0.0000001;                                        //Proportional velocity control constant
+float Kd = 0.00000075;
 float Ki = 0.000000005;
 float desiredCntPerSecLeft, desiredCntPerSecRight;       //desired counts per second
 
@@ -67,16 +67,16 @@ int hallState = 1;              //state of hall sensor
 int easyState = 1;              //state of easy button
 int startTime;
 int delayTime;
-
-
+int blinkTime;
+int lastBlink;
 
 // *** Declare & Initialize Pins ***
 
 const int hallPin1 = 30;
 const int hallPin2 = 32;
 const int LEDhall = 42;
-const int LEDred = 44;
-const int LEDblue = 46;
+int LEDred = 44;
+int LEDblue = 46;
 int LEDteam = LEDblue;
 const int LEDgreen = 45;
 const int servoBoomPin = 52;
@@ -123,7 +123,8 @@ void setup()
   pinMode(hallPin2,INPUT);
   pinMode(LEDhall,OUTPUT);
   pinMode(LEDhall,OUTPUT);
-  pinMode(LEDteam,OUTPUT);
+  pinMode(LEDred, OUTPUT);
+  pinMode(LEDblue, OUTPUT);
   pinMode(LEDgreen,OUTPUT);
   pinMode(easyPin,INPUT);
   digitalWrite(easyPin,HIGH);
@@ -191,7 +192,7 @@ void loop()
     readEasy();
 
     //Print to serial monitor
-    serialPrint();
+    //serialPrint();
     
     //Indicate Team
     changeTeam();
@@ -574,12 +575,12 @@ void readEasy()
     md.setM2Speed(0);
     startTime = millis();
     delayTime = millis() - startTime;
+    lastBlink = 0;
     delay(2000);
     while(delayTime < 30000)
     {
-
       //Blink LEDs
-      if(delayTime%5 == 0)
+      if(delayTime - lastBlink > 1000)
       {
         if(currentLEDState == 0)
         {
@@ -595,12 +596,15 @@ void readEasy()
           digitalWrite(LEDgreen, LOW);
           currentLEDState = 0;
         }
+        lastBlink = delayTime;
       }
       
       easyState = digitalRead(easyPin);
       Serial.print(easyState);
       Serial.print(" || Delayed: ");
-      Serial.println(delayTime);
+      Serial.print(delayTime);
+      Serial.print(" || Last Blink: ");
+      Serial.println(lastBlink);
 
       //Update delay time
       delayTime = millis() - startTime;
@@ -621,33 +625,37 @@ void readEasy()
 
 void changeTeam()
 {
-  if(Sel == 0)
+  digitalWrite(LEDteam, LOW);
+  if(sbUp == 0 && sbDown == 0)
   {
-    if(LEDteam == LEDblue){LEDteam = LEDred;}
-    else{LEDteam = LEDblue;}
-    digitalWrite(LEDteam, HIGH);
+    LEDteam = LEDred;
   }
+  if(sgOpen == 0 && sgClose == 0)
+  {
+    LEDteam = LEDblue;
+  }
+  digitalWrite(LEDteam, HIGH);
 }
 
 void serialPrint()
 {
   //Print Signals
-  Serial.print(hallState);
-  Serial.print(" | ");    
-//  Serial.print(Sel);
-//  Serial.print(" | ");
-//  Serial.print(sgOpen);
-//  Serial.print(" | ");
-//  Serial.print(sbUp);
-//  Serial.print(" | ");
-//  Serial.print(sbDown);
-//  Serial.print(" | ");
-//  Serial.print(sgClose);
-//  Serial.print(" | ");
-//  Serial.print("left motor: ");
-//  Serial.print(leftMotor);
-//  Serial.print(" right motor: ");
-//  Serial.print(rightMotor);
-  Serial.print(easyState);
+  //Serial.print(hallState);
+  //Serial.print(" | ");    
+  //Serial.print(Sel);
+  //Serial.print(" | ");
+  Serial.print(sgOpen);
+  Serial.print(" | ");
+  Serial.print(sbUp);
+  Serial.print(" | ");
+  Serial.print(sbDown);
+  Serial.print(" | ");
+  Serial.print(sgClose);
+  //Serial.print(" | ");
+  //Serial.print("left motor: ");
+  //Serial.print(leftMotor);
+  //Serial.print(" right motor: ");
+  //Serial.print(rightMotor);
+  //Serial.print(easyState);
   Serial.println(); 
 }
