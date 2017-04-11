@@ -623,6 +623,7 @@ void readEasy()
   }
 }
 
+//This function changes the team color when certain button combinations are pressed
 void changeTeam()
 {
   digitalWrite(LEDteam, LOW);
@@ -637,6 +638,8 @@ void changeTeam()
   digitalWrite(LEDteam, HIGH);
 }
 
+//This function prints program variables
+//Note: running this function makes the serial communication between the uno and mega laggy
 void serialPrint()
 {
   //Print Signals
