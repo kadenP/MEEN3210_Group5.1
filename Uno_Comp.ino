@@ -216,8 +216,8 @@ void unoRecieve()
   Serial.print(" || ");
   if(mySerial.available())
   {
-    digitalWrite(led_Y, HIGH);                              //Indicate Connection
-  
+    digitalWrite(led_Y, HIGH);                               //Indicate Connection
+     
     //Recieve serial commands from uno if all serial commands are available and active
     int take = mySerial.read();
     if(take < 2){hallState = take;}                          //Hall sensor reading
@@ -225,7 +225,7 @@ void unoRecieve()
     else{digitalWrite(led_R, LOW);}                          //Indicate no magnet
   }
    
-  else{digitalWrite(led_Y, LOW);}                          //Indicate no connection
+  else{digitalWrite(led_Y, LOW);}                            //Indicate no connection
   Serial.println(hallState);
 }
 
@@ -236,25 +236,19 @@ the serial port
 ***********************************************************************************/
 void comTest()
 {
- if (mySerial.available())
+ if(mySerial.available())
  {
-  while (mySerial.available()) 
+  while(mySerial.available()) 
    {
-     Serial.write(mySerial.read());
-       
-     delay(2);
-     
+     Serial.write(mySerial.read());   
+     delay(2);  
    }
-
-  Serial.print("\n");
-   
+  Serial.print("\n");  
  }
  
  while (Serial.available()) 
  {
      mySerial.write(Serial.read());
-
      delay(2);
-  
  }
 }
