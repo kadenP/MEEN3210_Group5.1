@@ -623,23 +623,23 @@ void readEasy()
   }
 }
 
-//This function changes the team color when certain button combinations are pressed
 void changeTeam()
 {
-  digitalWrite(LEDteam, LOW);
-  if(sbUp == 0 && sbDown == 0)
+  if(millis() < 15000)
   {
-    LEDteam = LEDred;
+    digitalWrite(LEDteam, LOW);
+    if(sbUp == 0 && sbDown == 0)
+    {
+      LEDteam = LEDred;
+    }
+    if(sgOpen == 0 && sgClose == 0)
+    {
+      LEDteam = LEDblue;
+    }
+    digitalWrite(LEDteam, HIGH);
   }
-  if(sgOpen == 0 && sgClose == 0)
-  {
-    LEDteam = LEDblue;
-  }
-  digitalWrite(LEDteam, HIGH);
 }
 
-//This function prints program variables
-//Note: running this function makes the serial communication between the uno and mega laggy
 void serialPrint()
 {
   //Print Signals
