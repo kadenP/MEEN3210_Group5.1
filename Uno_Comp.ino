@@ -122,8 +122,9 @@ int motorInput(int xRaw, int yRaw)
   }
   else
   {
-    leftMotor = constrain(throttle + direc, -400, 400);
-    rightMotor = constrain(throttle - direc, -400, 400);
+    //negative sign because motors were mounted opposite
+    leftMotor = -constrain(throttle + direc, -400, 400);
+    rightMotor = -constrain(throttle - direc, -400, 400);
   }
 }
 
