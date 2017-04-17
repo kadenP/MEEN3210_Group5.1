@@ -8,8 +8,8 @@
  * The TX2 on Arduino Mega must be connected to pin 3 on XBee shield
  * Make sure the small switch on the XBee Shield is in the Dline position
  *
- * Receives from the hardware serial, sends to hardware serial1.
- * Receives from hardware serial1, sends to hardware serial.
+ * Receives from the hardware serial, sends to hardware Serial2.
+ * Receives from hardware Serial2, sends to hardware serial.
  * 
  * Started on 02/25/2017
  * by Kaden Plewe
@@ -72,7 +72,7 @@ int lastBlink;
 
 // *** Declare & Initialize Pins ***
 
-const int hallPin1 = 2;
+const int hallPin1 = 4;
 //const int hallPin2 = 32;
 const int LEDhall = 42;
 int LEDred = 44;
@@ -113,10 +113,10 @@ void setup()
   Serial.println("Hello Computer, I'm a Mega");
 
   // Open serial communications with Xbee and wait for port to open:
-  Serial1.begin(9600);
+  Serial2.begin(9600);
 
   // Send a message to the Uno through the Xbee
-  Serial1.print("Hello Uno, I'm a Mega!");
+  Serial2.print("Hello Uno, I'm a Mega!");
 
   //Set digital states
   pinMode(hallPin1,INPUT);
@@ -167,10 +167,11 @@ void loop()
   //comTest();
 
   //Recieve serial commands from uno if all serial commands are available and active
-  while(Serial1.available()>commandNum)
+  
+  while(Serial2.available()>commandNum)
   {
     //Skip if the start signal isn't identified
-    startSignal = Serial1.read();
+    startSignal = Serial2.read();
     if(startSignal != 255)
     {
       continue;
@@ -197,6 +198,7 @@ void loop()
     //Indicate Team
     changeTeam();
   }
+  
 
   //Check easy button out of loop
   readEasy();
@@ -213,37 +215,37 @@ void MegaCom()
   //Otherwise, collect all expected signals in sequence with small delays in between
   int take;
   int delayTime = 0.5;                         //time for split delays
-  take = Serial1.read();
+  take = Serial2.read();
   if(take != 255){leftSign = take;}          //read left motor sign
   delay(delayTime);
-  take = Serial1.read();
+  take = Serial2.read();
   if(take != 255){left1 = take;}             //read first part of left speed signal
   delay(delayTime);
-  take = Serial1.read();
+  take = Serial2.read();
   if(take != 255){left2 = take;}             //read second part of left speed signal
   delay(delayTime);
-  take = Serial1.read();
+  take = Serial2.read();
   if(take != 255){rightSign = take;}         //read right motor sign
   delay(delayTime);
-  take = Serial1.read();
+  take = Serial2.read();
   if(take != 255){right1 = take;}            //read first part of right speed signal
   delay(delayTime);
-  take = Serial1.read();
+  take = Serial2.read();
   if(take != 255){right2 = take;}            //read second part of right speed signal
   delay(delayTime);
-  take = Serial1.read();
+  take = Serial2.read();
   if(take != 255){Sel = take;}               //read select button state signal
   delay(delayTime);
-  take = Serial1.read();
+  take = Serial2.read();
   if(take != 255){sgOpen = take;}            //read grab servo open signal
   delay(delayTime);
-  take = Serial1.read();
+  take = Serial2.read();
   if(take != 255){sbUp = take;}              //read boom servo up command signal
   delay(delayTime);
-  take = Serial1.read();
+  take = Serial2.read();
   if(take != 255){sbDown = take;}            //read boom servo down command signal
   delay(delayTime);
-  take = Serial1.read();
+  take = Serial2.read();
   if(take != 255){sgClose = take;}           //read grab servo close signal
   delay(delayTime);
 
@@ -262,7 +264,7 @@ void MegaCom()
 void MegaSend()
 {
   //Send signal
-  Serial1.write(hallState);          //State of hall effect sensor
+  Serial2.write(hallState);          //State of hall effect sensor
  
 }
 
@@ -270,11 +272,11 @@ void MegaSend()
 //downloaded on the uno, the two should be able to send messages through the serial port
 void comTest()
 {
-  if (Serial1.available())
+  if (Serial2.available())
   {
-     while (Serial1.available()) 
+     while (Serial2.available()) 
     {
-      Serial.write(Serial1.read());
+      Serial.write(Serial2.read());
         
       delay(2);
     }
@@ -284,7 +286,7 @@ void comTest()
   
    while (Serial.available()) 
   {
-    Serial1.write(Serial.read());
+    Serial2.write(Serial.read());
 
     delay(2);
   }
@@ -647,8 +649,8 @@ void serialPrint()
 {
   //Print Signals
   Serial.print(analogRead(hallPin1));
-  //Serial.print(" | ");    
-  //Serial.print(Sel);
+  Serial.print(" | ");    
+  Serial.print(Sel);
   //Serial.print(" | ");
   //Serial.print(sgOpen);
   //Serial.print(" | ");
