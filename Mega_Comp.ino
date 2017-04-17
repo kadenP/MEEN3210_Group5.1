@@ -72,8 +72,8 @@ int lastBlink;
 
 // *** Declare & Initialize Pins ***
 
-const int hallPin1 = 30;
-const int hallPin2 = 32;
+const int hallPin1 = 2;
+//const int hallPin2 = 32;
 const int LEDhall = 42;
 int LEDred = 44;
 int LEDblue = 46;
@@ -120,7 +120,7 @@ void setup()
 
   //Set digital states
   pinMode(hallPin1,INPUT);
-  pinMode(hallPin2,INPUT);
+  //pinMode(hallPin2,INPUT);
   pinMode(LEDhall,OUTPUT);
   pinMode(LEDhall,OUTPUT);
   pinMode(LEDred, OUTPUT);
@@ -200,6 +200,9 @@ void loop()
 
   //Check easy button out of loop
   readEasy();
+
+  //Print to serial monitor
+  //serialPrint();
   
 }
 
@@ -560,7 +563,7 @@ void clampControl()
 //This function reads the hall effect sensor
 void readHall()
 {
-  if(digitalRead(hallPin1) == 0 || digitalRead(hallPin2) == 0){hallState = 0;}
+  if(analogRead(hallPin1) > 100){hallState = 0;}
   else{hallState = 1;}
 }
 
@@ -643,17 +646,17 @@ void changeTeam()
 void serialPrint()
 {
   //Print Signals
-  //Serial.print(hallState);
+  Serial.print(analogRead(hallPin1));
   //Serial.print(" | ");    
   //Serial.print(Sel);
   //Serial.print(" | ");
-  Serial.print(sgOpen);
-  Serial.print(" | ");
-  Serial.print(sbUp);
-  Serial.print(" | ");
-  Serial.print(sbDown);
-  Serial.print(" | ");
-  Serial.print(sgClose);
+  //Serial.print(sgOpen);
+  //Serial.print(" | ");
+  //Serial.print(sbUp);
+  //Serial.print(" | ");
+  //Serial.print(sbDown);
+  //Serial.print(" | ");
+  //Serial.print(sgClose);
   //Serial.print(" | ");
   //Serial.print("left motor: ");
   //Serial.print(leftMotor);
